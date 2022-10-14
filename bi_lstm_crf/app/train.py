@@ -45,8 +45,10 @@ def train(args):
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = preprocessor.load_dataset(
         args.corpus_dir, args.val_split, args.test_split, max_seq_len=args.max_seq_len)
     train_dl = DataLoader(TensorDataset(x_train, y_train), batch_size=args.batch_size, shuffle=True)
-    valid_dl = DataLoader(TensorDataset(x_val, y_val), batch_size=args.batch_size * 2)
-    test_dl = DataLoader(TensorDataset(x_test, y_test), batch_size=args.batch_size * 2)
+    if args.val_split > 0.:
+        valid_dl = DataLoader(TensorDataset(x_val, y_val), batch_size=args.batch_size * 2)
+    if args.test_split > 0.:
+        test_dl = DataLoader(TensorDataset(x_test, y_test), batch_size=args.batch_size * 2)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -69,11 +71,13 @@ def train(args):
                 epoch+1, args.num_epoch, loss, val_loss))
             losses.append([epoch, bi, loss.item(), np.nan])
 
-        # evaluation
-        val_loss = __eval_model(model, device, dataloader=valid_dl, desc="eval").item()
-        # save losses
-        losses[-1][-1] = val_loss
-        __save_loss(losses, loss_path)
+        val_loss = 0.
+        if args.val_split > 0.:
+            # evaluation
+            val_loss = __eval_model(model, device, dataloader=valid_dl, desc="eval").item()
+            # save losses
+            losses[-1][-1] = val_loss
+            __save_loss(losses, loss_path)
 
         # save model
         if not args.save_best_val_model or val_loss < best_val_loss:
@@ -81,13 +85,14 @@ def train(args):
             __save_model(args.model_dir, model)
             print("save model(epoch: {}) => {}".format(epoch, loss_path))
 
-    # test
-    test_loss = __eval_model(model, device, dataloader=test_dl, desc="test").item()
-    last_loss = losses[-1][:]
-    last_loss[-1] = test_loss
-    losses.append(last_loss)
-    __save_loss(losses, loss_path)
-    print("training completed. test loss: {:.2f}".format(test_loss))
+    if args.test_split > 0.:
+        # test
+        test_loss = __eval_model(model, device, dataloader=test_dl, desc="test").item()
+        last_loss = losses[-1][:]
+        last_loss[-1] = test_loss
+        losses.append(last_loss)
+        __save_loss(losses, loss_path)
+        print("training completed. test loss: {:.2f}".format(test_loss))
 
 
 def main():
