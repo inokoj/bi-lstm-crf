@@ -82,7 +82,7 @@ class Preprocessor:
         val_count = int(total_count * val_split)
         test_count = int(total_count * test_split)
         train_count = total_count - val_count - test_count
-        assert train_count > 0 and val_count > 0
+        #assert train_count > 0 and val_count > 0
 
         indices = np.cumsum([0, train_count, val_count, test_count])
         datasets = [(xs[s:e], ys[s:e]) for s, e in zip(indices[:-1], indices[1:])]
